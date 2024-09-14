@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/01-edu/z01"
 )
@@ -26,26 +28,39 @@ func main() {
 	fmt.Println("Starting to solve : ")
 	PrintSudoku(os.Args)
 
-	for i := 1; i < 10; i++ {
-		for j := 0; j < 9; j++ {
-			if os.Args[i][j] == '.' {
-				asChanged := TryNumbers(os.Args, i, j)
-				if asChanged {
-					i = 1
-					j = -1
+	sudoku := make([]string, len(os.Args))
+	copy(sudoku, os.Args)
+	var addRandom = false
+
+	for !IsSolved(sudoku) {
+		for i := 1; i < 10; i++ {
+			for j := 0; j < 9; j++ {
+				if sudoku[i][j] == '.' {
+					asChanged := TryNumbers(sudoku, i, j, addRandom)
+					if asChanged == 1 {
+						i = 1
+						j = -1
+					} else if asChanged == 2 {
+						fmt.Println("\n\nWrong solition :")
+						PrintSudoku(sudoku)
+						copy(sudoku, os.Args)
+						addRandom = true
+
+					}
 				}
 			}
 		}
+		addRandom = true
 	}
 
 	fmt.Println("\n\nSudoku solved :")
-	PrintSudoku(os.Args)
+	PrintSudoku(sudoku)
 }
 
-func TryNumbers(Args []string, i int, j int) bool {
-	column := GetColumn(Args, j)
-	line := Args[i]
-	square := GetSquare(Args, i, j)
+func TryNumbers(sudoku []string, i int, j int, random bool) int {
+	column := GetColumn(sudoku, j)
+	line := sudoku[i]
+	square := GetSquare(sudoku, i, j)
 
 	var possibilities []int
 	for i := 1; i < 10; i++ {
@@ -54,16 +69,23 @@ func TryNumbers(Args []string, i int, j int) bool {
 		}
 	}
 
-	fmt.Println("\n at ", i, j, " found possibilities : ", possibilities)
 	if len(possibilities) == 1 {
-		AddNumberAtIndex(Args, i, j, possibilities[0])
-		return true
+		AddNumberAtIndex(sudoku, i, j, possibilities[0])
+		return 1
 	}
 	if len(possibilities) == 0 {
-		fmt.Println("Sudoku impossible ?")
+		return 2
 	}
 
-	return false
+	if len(possibilities) == 2 && random {
+		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+		if rng.Intn(4) == 1 {
+			TheChoosenPossibility := rng.Intn(2)
+			AddNumberAtIndex(sudoku, i, j, possibilities[TheChoosenPossibility])
+		}
+	}
+
+	return 0
 }
 
 func NumberInLine(s string, n int) bool {
@@ -75,46 +97,42 @@ func NumberInLine(s string, n int) bool {
 	return false
 }
 
-func GetColumn(Args []string, columnIndex int) string {
+func GetColumn(sudoku []string, columnIndex int) string {
 	var column string
 	for i := 1; i < 10; i++ {
-		column += string(Args[i][columnIndex])
+		column += string(sudoku[i][columnIndex])
 	}
 	return column
 }
 
-func GetSquare(Args []string, LineIndex int, columnIndex int) string {
+func GetSquare(sudoku []string, LineIndex int, columnIndex int) string {
 	var square string
 	LineIndex -= (LineIndex - 1) % 3
 	columnIndex -= columnIndex % 3
 	for i := LineIndex; i < LineIndex+3; i++ {
 		for j := columnIndex; j < columnIndex+3; j++ {
-			square += string(Args[i][j])
+			square += string(sudoku[i][j])
 		}
 	}
 	return square
 }
 
-func AddNumberAtIndex(Args []string, i int, j int, n int) {
+func AddNumberAtIndex(sudoku []string, i int, j int, n int) {
 	var newString string
 	for k := 0; k < 9; k++ {
 		if k != j {
-			newString += string(Args[i][k])
+			newString += string(sudoku[i][k])
 		} else {
 			newString += string(n + 48)
 		}
 	}
-	fmt.Println("\n\nChanged line from : ")
-	PrintStr(Args[i])
-	fmt.Println("\nto ")
-	PrintStr(newString)
 
-	Args[i] = newString
+	sudoku[i] = newString
 }
 
-func PrintSudoku(Args []string) {
+func PrintSudoku(sudoku []string) {
 	for i := 1; i < 10; i++ {
-		PrintStr(Args[i])
+		PrintStr(sudoku[i])
 		fmt.Println("")
 	}
 }
@@ -126,4 +144,15 @@ func PrintStr(s string) {
 			z01.PrintRune(' ')
 		}
 	}
+}
+
+func IsSolved(sudoku []string) bool {
+	for i := 1; i < 10; i++ {
+		for j := 0; j < 9; j++ {
+			if sudoku[i][j] == '.' {
+				return false
+			}
+		}
+	}
+	return true
 }
